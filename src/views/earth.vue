@@ -14,7 +14,8 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import chinaJson from '@/assets/json/geoJson/china.json'
 import chinaOutlineJson from '@/assets/json/geoJson/china-outline.json'
-
+import worldJson from '@/assets/json/geoJson/worldZh.json'
+import { drawLine, shapeMesh } from '../utils'
 let renderer, camera, scene, gui, light, stats, controls, geometry, material, line, matLine, mesh, stars, uniforms
 // const Dom = document.querySelector('#container')
 const radius = 5
@@ -53,7 +54,7 @@ export default {
     }
   },
   methods: {
-    // 初始化总函数
+    // 初始化
     init() {
       console.log(111)
       this.width = document.querySelector('#container').clientWidth
@@ -117,9 +118,9 @@ export default {
       globeTextureLoader.load(require('../assets/imgs/earth_3.jpg'), (texture) => {
         console.log(texture)
         var globeGgeometry = new THREE.SphereGeometry(radius, 100, 100)
-        var globeMaterial = new THREE.MeshStandardMaterial({ color: '#fff', side: THREE.DoubleSide, map: texture })
+        var globeMaterial = new THREE.MeshStandardMaterial({ color: '#191970', side: THREE.DoubleSide })
         var globeMesh = new THREE.Mesh(globeGgeometry, globeMaterial)
-        group.rotation.set(0.5, 2.9, 0.1)
+        // group.rotation.set(0.5, 2.9, 0.1)
         group.add(globeMesh)
         scene.add(group)
       })
@@ -192,17 +193,6 @@ export default {
       // setTimeout(this.animateLine(animateDots), 20)
       // this.animateLine(animateDots)
     },
-    // animateLine(animateDots) {
-    //   var vIndex = 0
-    //   aGroup.children.forEach((elem, index) => {
-    //     const v = animateDots[index][vIndex]
-    //     elem.position.set(v.x, v.y, v.z)
-    //   })
-    //   vIndex++
-    //   if (vIndex > 100) {
-    //     vIndex = 0
-    //   }
-    // },
     /**
      * @desc 随机设置点
      * @param <Group> group ...
@@ -409,17 +399,34 @@ export default {
         var earthPoints = new THREE.Points(geometry, material) //点模型对象
         groupHalo.add(earthPoints) //点对象添加到场景中
       })
-      groupHalo.rotation.set(1.9, 0.5, 1)
+      groupHalo.rotation.set(1.9, 0, 0)
       scene.add(groupHalo)
+    },
+    // 初始化全球地图数据
+    initWorldGeoJson() {
+      // "Polygon"：国家area有一个封闭轮廓
+      //"MultiPolygon"：国家area有多个封闭轮廓
+      // let worldMap = new THREE.Group()
+      worldJson.features.forEach((area) => {
+        if (area.geometry.type === 'Polygon') {
+          // 把"Polygon"和"MultiPolygon"的geometry.coordinates数据结构处理为一致
+          area.geometry.coordinates = [area.geometry.coordinates]
+        }
+        // 解析所有封闭轮廓边界坐标area.geometry.coordinates
+        group.add(drawLine(area.geometry.coordinates, radius)) //国家边界轮廓插入组对象mapGroup
+        // worldMap.add(shapeMesh(area.geometry.coordinates, 10)) //国家轮廓Mesh插入组对象mapGroup
+        // group.add(shapeMesh(area.geometry.coordinates, 10)) //国家轮廓Mesh插入组对象mapGroup
+      })
+      // group.add(worldMap)
+      // console.log('=====', worldMap)
     },
     // 中国地图描边
     initGeoJson() {
       // const loader = new THREE.FileLoader()
-
       this.initMap(chinaJson)
-
       this.outLineMap(chinaOutlineJson)
     },
+    // 初始化中国地图(包括省份轮廓)
     initMap(chinaJson) {
       // 遍历省份构建模型
       chinaJson.features.forEach((elem) => {
@@ -444,6 +451,7 @@ export default {
       })
       group.add(map)
     },
+
     outLineMap(json) {
       json.features.forEach((elem) => {
         // 新建一个省份容器：用来存放省份对应的模型和轮廓线
@@ -578,9 +586,13 @@ export default {
   created() {},
   mounted() {
     this.init()
+    var axesHelper = new THREE.AxesHelper(300)
+    scene.add(axesHelper)
     this.render()
     this.initTween()
+    this.initWorldGeoJson()
     this.initGeoJson()
+
     // window.addEventListener('resize', this.onWindowResize(), false)
     // console.log(group)
   }
